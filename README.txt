@@ -8,7 +8,7 @@ INSTALLATION
 ------------
 - Copy tablefield directory to /sites/all/modules
 - Enable module at /admin/build/modules
-- Add a tablefield to a content type at /admin/content/types
+- Add a tablefield to an entity at /admin/structure
 
 AUTHOR/MAINTAINER
 -----------------

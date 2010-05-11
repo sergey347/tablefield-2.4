@@ -10,16 +10,12 @@
 * Implementation of hook_install().
 */
 function tablefield_install() {
-  drupal_load('module', 'content');
-  content_notify('install', 'tablefield');
 }
 
 /**
 * Implementation of hook_uninstall().
 */
 function tablefield_uninstall() {
-  drupal_load('module', 'content');
-  content_notify('uninstall', 'tablefield');
 }
 
 /**
@@ -28,8 +24,6 @@ function tablefield_uninstall() {
 * Notify content module when this module is enabled.
 */
 function tablefield_enable() {
-  drupal_load('module', 'content');
-  content_notify('enable', 'tablefield');
 }
 
 /**
@@ -38,7 +32,5 @@ function tablefield_enable() {
 * Notify content module when this module is disabled.
 */
 function tablefield_disable() {
-  drupal_load('module', 'content');
-  content_notify('disable', 'tablefield');
 }
 ?>
