@@ -131,9 +131,8 @@ function tablefield_field_is_empty($item, $field) {
   }
 
   // Remove the preference fields to see if the table cells are all empty
-  unset($item['tablefield']['count_cols']);
-  unset($item['tablefield']['count_rows']);
   unset($item['tablefield']['rebuild']);
+  unset($item['tablefield']['import']);
   if (!empty($item['tablefield'])) {
     foreach ($item['tablefield'] as $cell) {
       if (!empty($cell)) {
@@ -224,6 +223,7 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
   drupal_add_css(drupal_get_path('module', 'tablefield') . '/tablefield.css');
 
   $element['#type'] = 'tablefield';
+  $form['#attributes']['enctype'] = 'multipart/form-data';
 
   // Establish a list of saved/submitted/default values
   if (isset($form_state['clicked_button']['#value']) && $form_state['clicked_button']['#value'] == 'Rebuild Table') {
@@ -241,8 +241,8 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
   else {
     // Get the widget default value
     $default_value = tablefield_rationalize_table($instance['default_value'][$delta]['tablefield']);
-    $default_count_cols = isset($items[0]['tablefield']['count_cols']) ? $items[0]['tablefield']['count_cols'] : '';
-    $default_count_rows = isset($items[0]['tablefield']['count_cols']) ? $items[0]['tablefield']['count_cols'] : '';
+    $default_count_cols = isset($items[0]['tablefield']['rebuild']['count_cols']) ? $items[0]['tablefield']['rebuild']['count_cols'] : '';
+    $default_count_rows = isset($items[0]['tablefield']['rebuild']['count_cols']) ? $items[0]['tablefield']['rebuild']['count_cols'] : '';
   }
 
   $element['tablefield'] = array(
@@ -286,8 +286,8 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
 
   // Override the number of rows/columns if the user rebuilds the form.
   if (isset($form_state['clicked_button']['#value']) && $form_state['clicked_button']['#value'] == 'Rebuild Table') {
-    $count_cols = $form_state['tablefield_rebuild'][$field['field_name']][$langcode][$delta]['tablefield']['count_cols'];
-    $count_rows = $form_state['tablefield_rebuild'][$field['field_name']][$langcode][$delta]['tablefield']['count_rows'];
+    $count_cols = $form_state['tablefield_rebuild'][$field['field_name']][$langcode][$delta]['tablefield']['rebuild']['count_cols'];
+    $count_rows = $form_state['tablefield_rebuild'][$field['field_name']][$langcode][$delta]['tablefield']['rebuild']['count_rows'];
 
     drupal_set_message(t('Table structure rebuilt.'), 'status', FALSE);
   }
@@ -320,7 +320,14 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
   );
 
   // Allow the user to add more rows/columns
-  $element['tablefield']['count_cols'] = array(
+  $element['tablefield']['rebuild'] = array(
+    '#type' => 'fieldset',
+    '#tree' => TRUE,
+    '#title' => t('Change number of rows/columns.'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  $element['tablefield']['rebuild']['count_cols'] = array(
     '#title' => t('How many Columns'),
     '#type' => 'textfield',
     '#size' => 5,
@@ -328,7 +335,7 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     '#suffix' => '</div>',
     '#value' => $count_cols,
   );
-  $element['tablefield']['count_rows'] = array(
+  $element['tablefield']['rebuild']['count_rows'] = array(
     '#title' => t('How many Rows'),
     '#type' => 'textfield',
     '#size' => 5,
@@ -336,7 +343,7 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     '#suffix' => '</div>',
     '#value' => $count_rows,
   );
-  $element['tablefield']['rebuild'] = array(
+  $element['tablefield']['rebuild']['rebuild'] = array(
     '#type' => 'button',
     '#validate' => array(),
     '#executes_submit_callback' => TRUE,
@@ -348,6 +355,31 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     ),
   );
 
+  // NEW Allow the user to import a csv file
+  $element['tablefield']['import'] = array(
+    '#type' => 'fieldset',
+    '#tree' => FALSE,
+    '#title' => t('Import from CSV'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  $element['tablefield']['import']['tablefield_csv_' . $field['field_name'] . '_' . $delta] = array(
+    '#title' => 'File upload',
+    '#type' => 'file',
+  );
+  $element['tablefield']['import']['rebuild_' . $field['field_name'] . '_' . $delta] = array(
+    '#type' => 'button',
+    '#validate' => array(),
+    '#executes_submit_callback' => TRUE,
+    '#validate' => array('tablefield_import_csv'),
+    '#submit' => array('tablefield_rebuild_form'),
+    '#value' => 'Import into: ' . $field['field_name'] . '-' . $delta,
+    '#attributes' => array(
+      'class' => array('tablefield-rebuild'),
+      'id' => 'tablefield-import-button-' . $field['field_name'] . '-' . $delta,
+    ),
+  );
+
   // Allow the user to select input filters
   if (!empty($field['settings']['cell_processing'])) {
     $element['#base_type'] = $element['#type'];
@@ -356,6 +388,51 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
   }
 
   return $element;
+}
+
+/**
+ * Validation function to help import data from a CSV file
+ * @param array $form
+ * @param array $form_state
+ */
+function tablefield_import_csv($form, &$form_state) {
+  // @todo do we need to destroy the file after loading the data?
+  // Look for the field name by checking on the clicked button
+  if(preg_match('/edit-rebuild-(.*)/', $form_state['clicked_button']['#id'], $id)) {
+    // Extract the field and file name from the id of the clicked button
+    $file_name = preg_replace('/\-/', '_', $id[1]);
+    preg_match('/[^0-9]*_([0-9]+)$/', $file_name, $field_delta);
+    // Extract the field delta from the field name
+    $delta = $field_delta[1];
+    $field_name = preg_replace('/' . $field_delta[0] . '/', '', $file_name);
+    // @todo fail out if no file
+    // @todo validate file type
+    $file = file_save_upload('tablefield_csv_' . $file_name);
+
+    if (is_object($file)) {
+      $csv = file($file->uri);
+
+      $max_col_count = 0;
+      $row_count = 0;
+      foreach ($csv as $row_id => $row_csv) {
+        $row = explode(',', $row_csv);
+        $col_count = 0; 
+        foreach ($row as $col_id => $col) {
+          // @todo how do we get the langcode for this element???
+          // @todo rebuild the rows/cols to match the csv
+          $form_state['values'][$field_name]['und'][$delta]['tablefield']['cell_' . $row_id . '_' . $col_id] = check_plain($col);
+          $col_count++;
+        }
+        $max_col_count = $col_count > $max_col_count ? $col_count : $max_col_count;
+        $row_count++;
+      }
+      
+      $form_state['values'][$field_name]['und'][$delta]['tablefield']['rebuild']['count_cols'] = $max_col_count;
+      $form_state['values'][$field_name]['und'][$delta]['tablefield']['rebuild']['count_rows'] = $row_count;
+
+      drupal_set_message(t('Successfully imported @file', array('@file' => $file->filename)));
+    }
+  }
 }
 
 // @todo how do we persist form_state.values for non-node entities????
@@ -386,11 +463,10 @@ function tablefield_rebuild_form($form, &$form_state) {
 function tablefield_rationalize_table($tablefield) {
   $tabledata = array();
   // Remove exterraneous form data
-  $count_cols = $tablefield['count_cols'];
-  unset($tablefield['count_cols']);
-  $count_rows = $tablefield['count_rows'];
-  unset($tablefield['count_rows']);
+  $count_cols = $tablefield['rebuild']['count_cols'];
+  $count_rows = $tablefield['rebuild']['count_rows'];
   unset($tablefield['rebuild']);
+  unset($tablefield['import']);
   // Rationalize the table data
   if (!empty($tablefield)) {
     foreach ($tablefield as $key => $value) {
