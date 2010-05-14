@@ -226,11 +226,11 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
   $form['#attributes']['enctype'] = 'multipart/form-data';
 
   // Establish a list of saved/submitted/default values
-  if (isset($form_state['clicked_button']['#value']) && $form_state['clicked_button']['#value'] == 'Rebuild Table') {
+  if (isset($form_state['clicked_button']['#value']) && $form_state['clicked_button']['#value'] == 'Rebuild Table' && $form_state['clicked_button']['#name'] == 'tablefield_rebuild_' . $field['field_name'] . '_' . $delta) {
     // Rebuilding table rows/cols
     $default_value = tablefield_rationalize_table($form_state['tablefield_rebuild'][$field['field_name']][$langcode][$delta]['tablefield']);
   }
-  elseif ($form_state['submitted']) {
+  elseif ($form_state['submitted'] && isset($items[$delta])) {
     // A form was submitted
     $default_value = tablefield_rationalize_table($items[$delta]['tablefield']);
   }
@@ -240,9 +240,9 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
   }
   else {
     // Get the widget default value
-    $default_value = tablefield_rationalize_table($instance['default_value'][$delta]['tablefield']);
-    $default_count_cols = isset($items[0]['tablefield']['rebuild']['count_cols']) ? $items[0]['tablefield']['rebuild']['count_cols'] : '';
-    $default_count_rows = isset($items[0]['tablefield']['rebuild']['count_cols']) ? $items[0]['tablefield']['rebuild']['count_cols'] : '';
+    $default_value = tablefield_rationalize_table($instance['default_value'][0]['tablefield']);
+    $default_count_cols = isset($items[0]['tablefield']['rebuild']['count_cols']) ? $items[0]['tablefield']['rebuild']['count_cols'] : 5;
+    $default_count_rows = isset($items[0]['tablefield']['rebuild']['count_cols']) ? $items[0]['tablefield']['rebuild']['count_cols'] : 5;
   }
 
   $element['tablefield'] = array(
@@ -252,10 +252,6 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     '#type' => 'fieldset',
     '#tree' => TRUE,
     '#collapsible' => FALSE,
-    //'#field_name' => $element['#field_name'],
-    //'#type_name' => $element['#type_name'],
-    //'#delta' => $element['#delta'],
-    //'#columns' => $element['#columns'],
   );
 
   // Give the fieldset the appropriate class if it is required
@@ -283,9 +279,9 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     $count_cols = isset($default_count_cols) ? $default_count_cols : 0;
     $count_rows = isset($default_count_rows) ? $default_count_rows : 0;
   }
-
+  
   // Override the number of rows/columns if the user rebuilds the form.
-  if (isset($form_state['clicked_button']['#value']) && $form_state['clicked_button']['#value'] == 'Rebuild Table') {
+  if (isset($form_state['clicked_button']['#value']) && $form_state['clicked_button']['#value'] == 'Rebuild Table' && $form_state['clicked_button']['#name'] == 'tablefield_rebuild_' . $field['field_name'] . '_' . $delta) {
     $count_cols = $form_state['tablefield_rebuild'][$field['field_name']][$langcode][$delta]['tablefield']['rebuild']['count_cols'];
     $count_rows = $form_state['tablefield_rebuild'][$field['field_name']][$langcode][$delta]['tablefield']['rebuild']['count_rows'];
 
@@ -304,10 +300,10 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
       $cell_default = isset($default_value[$i][$ii]) ? $default_value[$i][$ii] : '';
       $element['tablefield']['cell_' . $i . '_' . $ii] = array(
         '#type' => 'textfield',
-        '#size' => 10,
-        '#attributes' => array('id' => 'tablefield_' . $delta . '_cell_' . $i . '_' . $ii),
+        '#maxlength' => 2048,
+        '#attributes' => array('id' => 'tablefield_' . $delta . '_cell_' . $i . '_' . $ii, 'style' => 'width:97%'),
         '#default_value' => (empty($field_value)) ? $cell_default : $field_value,
-        '#prefix' => '<td>',
+        '#prefix' => '<td style="width:' . floor(100/$count_cols) . '%">',
         '#suffix' => '</td>',
       );
     }
@@ -346,16 +342,17 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
   $element['tablefield']['rebuild']['rebuild'] = array(
     '#type' => 'button',
     '#validate' => array(),
+    '#limit_validation_errors' => array('title'),
     '#executes_submit_callback' => TRUE,
     '#submit' => array('tablefield_rebuild_form'),
     '#value' => t('Rebuild Table'),
+    '#name' => 'tablefield_rebuild_' . $field['field_name'] . '_' . $delta,
     '#attributes' => array(
       'class' => array('tablefield-rebuild'),
-      'id' => 'tablefield-rebuild-button-' . $delta,
     ),
   );
 
-  // NEW Allow the user to import a csv file
+  // Allow the user to import a csv file
   $element['tablefield']['import'] = array(
     '#type' => 'fieldset',
     '#tree' => FALSE,
@@ -370,10 +367,11 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
   $element['tablefield']['import']['rebuild_' . $field['field_name'] . '_' . $delta] = array(
     '#type' => 'button',
     '#validate' => array(),
+    '#limit_validation_errors' => array('title'),
     '#executes_submit_callback' => TRUE,
     '#validate' => array('tablefield_import_csv'),
     '#submit' => array('tablefield_rebuild_form'),
-    '#value' => 'Import into: ' . $field['field_name'] . '-' . $delta,
+    '#value' => 'Import File to: ' . $field['field_name'] . '-' . $delta,
     '#attributes' => array(
       'class' => array('tablefield-rebuild'),
       'id' => 'tablefield-import-button-' . $field['field_name'] . '-' . $delta,
@@ -412,6 +410,14 @@ function tablefield_import_csv($form, &$form_state) {
     if (is_object($file)) {
       $csv = file($file->uri);
 
+      // Empty out previously entered values
+      foreach ($form_state['values'][$field_name]['und'][$delta]['tablefield'] as $key => $value) {
+        if (strpos($key, 'cell_') === 0) {
+          $form_state['values'][$field_name]['und'][$delta]['tablefield'][$key] = '';
+        }
+      }
+
+      // Populate CSV values
       $max_col_count = 0;
       $row_count = 0;
       foreach ($csv as $row_id => $row_csv) {
@@ -419,7 +425,6 @@ function tablefield_import_csv($form, &$form_state) {
         $col_count = 0; 
         foreach ($row as $col_id => $col) {
           // @todo how do we get the langcode for this element???
-          // @todo rebuild the rows/cols to match the csv
           $form_state['values'][$field_name]['und'][$delta]['tablefield']['cell_' . $row_id . '_' . $col_id] = check_plain($col);
           $col_count++;
         }
