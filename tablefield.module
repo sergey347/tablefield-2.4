@@ -299,8 +299,9 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     '#markup' => '<table>',
   );
   for ($i = 0; $i < $count_rows; $i++) {
+    $zebra = $i % 2 == 0 ? 'even' : 'odd';
     $element['tablefield']['b_break' . $i] = array(
-      '#markup' => '<tr>',
+      '#markup' => '<tr class="tablefield-row-' . $i . ' tablefield-' . $zebra . '">',
     );
     for ($ii = 0; $ii < $count_cols; $ii++) {
       $cell_default = isset($default_value[$i][$ii]) ? $default_value[$i][$ii] : '';
