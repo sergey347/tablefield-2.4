@@ -239,8 +239,14 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     $default_value = tablefield_rationalize_table(unserialize($items[$delta]['value']));
   }
   else {
+    // After the first table, we don't want to populate the values in the table
+    if ($delta > 0) {
+      tablefield_delete_table_values($instance['default_value'][0]['tablefield']);
+    }
+
     // Get the widget default value
     $default_value = tablefield_rationalize_table($instance['default_value'][0]['tablefield']);
+
     $default_count_cols = isset($items[0]['tablefield']['rebuild']['count_cols']) ? $items[0]['tablefield']['rebuild']['count_cols'] : 5;
     $default_count_rows = isset($items[0]['tablefield']['rebuild']['count_cols']) ? $items[0]['tablefield']['rebuild']['count_cols'] : 5;
   }
@@ -415,12 +421,7 @@ function tablefield_import_csv($form, &$form_state) {
     if (is_object($file)) {
       $csv = file($file->uri);
 
-      // Empty out previously entered values
-      foreach ($form_state['values'][$field_name]['und'][$delta]['tablefield'] as $key => $value) {
-        if (strpos($key, 'cell_') === 0) {
-          $form_state['values'][$field_name]['und'][$delta]['tablefield'][$key] = '';
-        }
-      }
+      tablefield_delete_table_values($form_state['values'][$field_name]['und'][$delta]['tablefield']);
 
       // Populate CSV values
       $max_col_count = 0;
@@ -444,6 +445,20 @@ function tablefield_import_csv($form, &$form_state) {
     }
   }
 }
+
+/**
+ * Helper function to remove all values in a particular table
+ * @param array $tablefield
+ */
+function tablefield_delete_table_values(&$tablefield) {
+  // Empty out previously entered values
+  foreach ($tablefield as $key => $value) {
+    if (strpos($key, 'cell_') === 0) {
+      $tablefield[$key] = '';
+    }
+  }
+}
+
 
 // @todo how do we persist form_state.values for non-node entities????
 //  - e.g. what is the generic way to do something like node_form_submit_build_node?
