@@ -248,7 +248,7 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
   $element['tablefield'] = array(
     '#title' => $element['#title'],
     '#description' => t('The first row will appear as the table header. Leave the first row blank if you do not need a header.'),
-    '#attributes' => array('id' => 'node-tablefield-' . $delta, 'class' => 'node-tablefield'),
+    '#attributes' => array('id' => 'form-tablefield-' . $field['field_name'] . '-' . $delta, 'class' => 'form-tablefield'),
     '#type' => 'fieldset',
     '#tree' => TRUE,
     '#collapsible' => FALSE,
@@ -289,11 +289,11 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
   }
 
   // Render the form table
-  $element['tablefield']['break'] = array(
+  $element['tablefield']['a_break'] = array(
     '#markup' => '<table>',
   );
   for ($i = 0; $i < $count_rows; $i++) {
-    $element['tablefield']['break' . $i] = array(
+    $element['tablefield']['b_break' . $i] = array(
       '#markup' => '<tr>',
     );
     for ($ii = 0; $ii < $count_cols; $ii++) {
@@ -301,17 +301,22 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
       $element['tablefield']['cell_' . $i . '_' . $ii] = array(
         '#type' => 'textfield',
         '#maxlength' => 2048,
-        '#attributes' => array('id' => 'tablefield_' . $delta . '_cell_' . $i . '_' . $ii, 'style' => 'width:97%'),
+        '#size' => 0,
+        '#attributes' => array(
+          'id' => 'tablefield_' . $delta . '_cell_' . $i . '_' . $ii, 
+          'class' => array('tablefield-row-' . $i, 'tablefield-col-' . $ii),
+          'style' => 'width:100%'
+        ),
         '#default_value' => (empty($field_value)) ? $cell_default : $field_value,
         '#prefix' => '<td style="width:' . floor(100/$count_cols) . '%">',
         '#suffix' => '</td>',
       );
     }
-    $element['tablefield']['break' . $i] = array(
+    $element['tablefield']['c_break' . $i] = array(
       '#markup' => '</tr>',
     );
   }
-  $element['tablefield']['break' . $i] = array(
+  $element['tablefield']['t_break' . $i] = array(
     '#markup' => '</table>',
   );
 
