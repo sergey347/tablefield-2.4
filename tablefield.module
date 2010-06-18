@@ -258,6 +258,8 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     '#type' => 'fieldset',
     '#tree' => TRUE,
     '#collapsible' => FALSE,
+    '#prefix' => '<div id="tablefield-' . $field['field_name'] . '-' . $delta . '-wrapper">',
+    '#suffix' => '</div>',
   );
 
   // Give the fieldset the appropriate class if it is required
@@ -285,7 +287,7 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     $count_cols = isset($default_count_cols) ? $default_count_cols : 0;
     $count_rows = isset($default_count_rows) ? $default_count_rows : 0;
   }
-  
+
   // Override the number of rows/columns if the user rebuilds the form.
   if (isset($form_state['clicked_button']['#value']) && $form_state['clicked_button']['#value'] == 'Rebuild Table' && $form_state['clicked_button']['#name'] == 'tablefield_rebuild_' . $field['field_name'] . '_' . $delta) {
     $count_cols = $form_state['tablefield_rebuild'][$field['field_name']][$langcode][$delta]['tablefield']['rebuild']['count_cols'];
@@ -293,7 +295,6 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
 
     drupal_set_message(t('Table structure rebuilt.'), 'status', FALSE);
   }
-
   // Render the form table
   $element['tablefield']['a_break'] = array(
     '#markup' => '<table>',
@@ -361,6 +362,12 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     '#name' => 'tablefield_rebuild_' . $field['field_name'] . '_' . $delta,
     '#attributes' => array(
       'class' => array('tablefield-rebuild'),
+    ),
+    '#ajax' => array(
+      'callback' => 'tablefield_rebuild_form_ajax',
+      'wrapper' => 'tablefield-' . $field['field_name'] . '-' . $delta . '-wrapper',
+      'effect' => 'fade',
+      'event' => 'click'
     ),
   );
 
@@ -460,6 +467,26 @@ function tablefield_delete_table_values(&$tablefield) {
   }
 }
 
+/**
+ * AJAX callback to rebuild the number of rows/columns.
+ * The basic idea is to descend down the list of #parent elements of the 
+ * clicked_button in order to locate the tablefield inside of the $form 
+ * array. That is the element that we need to return.
+ * @param array $form
+ * @param array $form_state
+ */
+function tablefield_rebuild_form_ajax($form, $form_state) {
+  $rebuild = $form;
+
+  foreach ($form_state['clicked_button']['#parents'] as $parent) {
+    $tmp = $rebuild;
+    if ($parent == 'rebuild') {
+      break;
+    }
+    $rebuild = $tmp[$parent];
+  }
+  return $rebuild;
+}
 
 // @todo how do we persist form_state.values for non-node entities????
 //  - e.g. what is the generic way to do something like node_form_submit_build_node?
