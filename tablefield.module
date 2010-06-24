@@ -418,10 +418,12 @@ function tablefield_import_csv($form, &$form_state) {
   if(preg_match('/edit-rebuild-(.*)/', $form_state['clicked_button']['#id'], $id)) {
     // Extract the field and file name from the id of the clicked button
     $file_name = preg_replace('/\-/', '_', $id[1]);
-    preg_match('/[^0-9]*_([0-9]+)$/', $file_name, $field_delta);
+    //preg_match('/[^0-9]*_([0-9]+)$/', $file_name, $field_delta);
+    preg_match('/_([0-9]+)$/', $file_name, $field_delta);
     // Extract the field delta from the field name
     $delta = $field_delta[1];
     $field_name = preg_replace('/' . $field_delta[0] . '/', '', $file_name);
+
     // @todo fail out if no file
     // @todo validate file type
     $file = file_save_upload('tablefield_csv_' . $file_name);
@@ -479,8 +481,16 @@ function tablefield_rebuild_form_ajax($form, $form_state) {
   $rebuild = $form;
 
   foreach ($form_state['clicked_button']['#parents'] as $parent) {
+    // Locate the delta of the field - 0 deltas need to break after
+    // descending to the 'rebuild' element, but deltas greater than
+    // 0 need to break /before/ adding the 'rebuild' element.
+    if (is_int($parent)) {
+      $delta = $parent;
+    }
     $tmp = $rebuild;
     if ($parent == 'rebuild') {
+      //$rebuild = $delta == 0 ? $tmp[$parent] : $tmp;
+      $rebuild = $tmp[$parent];
       break;
     }
     $rebuild = $tmp[$parent];
