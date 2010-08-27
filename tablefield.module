@@ -8,6 +8,7 @@
  */
 
 /**
+ * @todo use fgetcsv() to read in CSV data!
  * @todo should we create a helper function for sanitization?
  *  - we should see if it makes sense to sanitize on load as well as view
  */
@@ -254,7 +255,7 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
   $element['tablefield'] = array(
     '#title' => $element['#title'],
     '#description' => t('The first row will appear as the table header. Leave the first row blank if you do not need a header.'),
-    '#attributes' => array('id' => 'form-tablefield-' . $field['field_name'] . '-' . $delta, 'class' => 'form-tablefield'),
+    '#attributes' => array('id' => 'form-tablefield-' . $field['field_name'] . '-' . $delta, 'class' => array('form-tablefield')),
     '#type' => 'fieldset',
     '#tree' => TRUE,
     '#collapsible' => FALSE,
@@ -424,34 +425,38 @@ function tablefield_import_csv($form, &$form_state) {
     $delta = $field_delta[1];
     $field_name = preg_replace('/' . $field_delta[0] . '/', '', $file_name);
 
-    // @todo fail out if no file
     // @todo validate file type
-    $file = file_save_upload('tablefield_csv_' . $file_name);
+    $file = file_save_upload('tablefield_csv_' . $file_name, array('file_validate_extensions' => array('csv')));
 
     if (is_object($file)) {
-      $csv = file($file->uri);
+      if (($handle = fopen($file->uri, "r")) !== FALSE) {
+        tablefield_delete_table_values($form_state['values'][$field_name]['und'][$delta]['tablefield']);
 
-      tablefield_delete_table_values($form_state['values'][$field_name]['und'][$delta]['tablefield']);
-
-      // Populate CSV values
-      $max_col_count = 0;
-      $row_count = 0;
-      foreach ($csv as $row_id => $row_csv) {
-        $row = explode(',', $row_csv);
-        $col_count = 0; 
-        foreach ($row as $col_id => $col) {
-          // @todo how do we get the langcode for this element???
-          $form_state['values'][$field_name]['und'][$delta]['tablefield']['cell_' . $row_id . '_' . $col_id] = check_plain($col);
-          $col_count++;
+        // Populate CSV values
+        $max_col_count = 0;
+        $row_count = 0;
+        while (($csv = fgetcsv($handle, 0, ",")) !== FALSE) {
+          $col_count = count($csv);
+          foreach ($csv as $col_id => $col) {
+            $form_state['input'][$field_name]['und'][$delta]['tablefield']['cell_' . $row_count . '_' . $col_id] =
+            $form_state['values'][$field_name]['und'][$delta]['tablefield']['cell_' . $row_count . '_' . $col_id] = $col;
+          }
+          $max_col_count = $col_count > $max_col_count ? $col_count : $max_col_count;
+          $row_count++;
         }
-        $max_col_count = $col_count > $max_col_count ? $col_count : $max_col_count;
-        $row_count++;
-      }
-      
-      $form_state['values'][$field_name]['und'][$delta]['tablefield']['rebuild']['count_cols'] = $max_col_count;
-      $form_state['values'][$field_name]['und'][$delta]['tablefield']['rebuild']['count_rows'] = $row_count;
 
-      drupal_set_message(t('Successfully imported @file', array('@file' => $file->filename)));
+        fclose($handle);
+ 
+        $form_state['input'][$field_name]['und'][$delta]['tablefield']['rebuild']['count_cols'] =
+        $form_state['values'][$field_name]['und'][$delta]['tablefield']['rebuild']['count_cols'] = $max_col_count;
+        $form_state['input'][$field_name]['und'][$delta]['tablefield']['rebuild']['count_rows'] =
+        $form_state['values'][$field_name]['und'][$delta]['tablefield']['rebuild']['count_rows'] = $row_count;
+
+        drupal_set_message(t('Successfully imported @file', array('@file' => $file->filename)));
+      }
+      else {
+        drupal_set_message(t('There was a problem importing @file.', array('@file' => $file->filename)));
+      }
     }
   }
 }
