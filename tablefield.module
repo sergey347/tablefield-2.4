@@ -8,7 +8,6 @@
  */
 
 /**
- * @todo use fgetcsv() to read in CSV data!
  * @todo should we create a helper function for sanitization?
  *  - we should see if it makes sense to sanitize on load as well as view
  */
@@ -227,9 +226,14 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
   $form['#attributes']['enctype'] = 'multipart/form-data';
 
   // Establish a list of saved/submitted/default values
-  if (isset($form_state['clicked_button']['#value']) && $form_state['clicked_button']['#value'] == 'Rebuild Table' && $form_state['clicked_button']['#name'] == 'tablefield_rebuild_' . $field['field_name'] . '_' . $delta) {
+  if (isset($form_state['clicked_button']['#value']) && $form_state['clicked_button']['#name'] == 'tablefield_rebuild_' . $field['field_name'] . '_' . $delta) {
     // Rebuilding table rows/cols
     $default_value = tablefield_rationalize_table($form_state['tablefield_rebuild'][$field['field_name']][$langcode][$delta]['tablefield']);
+  }
+  elseif (isset($form_state['clicked_button']['#value']) && $form_state['clicked_button']['#name'] == 'tablefield_import_' . $field['field_name'] . '_' . $delta) {
+    // Importing CSV data
+    tablefield_import_csv($form, $form_state);
+    $default_value = tablefield_rationalize_table($form_state['input'][$field['field_name']][$langcode][$delta]['tablefield']);
   }
   elseif ($form_state['submitted'] && isset($items[$delta])) {
     // A form was submitted
@@ -285,17 +289,19 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     } 
   } 
   else {
+    $count_rows = count($default_value);
     $count_cols = isset($default_count_cols) ? $default_count_cols : 0;
     $count_rows = isset($default_count_rows) ? $default_count_rows : 0;
   }
 
   // Override the number of rows/columns if the user rebuilds the form.
-  if (isset($form_state['clicked_button']['#value']) && $form_state['clicked_button']['#value'] == 'Rebuild Table' && $form_state['clicked_button']['#name'] == 'tablefield_rebuild_' . $field['field_name'] . '_' . $delta) {
+  if (isset($form_state['clicked_button']['#value']) && $form_state['clicked_button']['#name'] == 'tablefield_rebuild_' . $field['field_name'] . '_' . $delta) {
     $count_cols = $form_state['tablefield_rebuild'][$field['field_name']][$langcode][$delta]['tablefield']['rebuild']['count_cols'];
     $count_rows = $form_state['tablefield_rebuild'][$field['field_name']][$langcode][$delta]['tablefield']['rebuild']['count_rows'];
 
     drupal_set_message(t('Table structure rebuilt.'), 'status', FALSE);
   }
+
   // Render the form table
   $element['tablefield']['a_break'] = array(
     '#markup' => '<table>',
@@ -375,7 +381,7 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
   // Allow the user to import a csv file
   $element['tablefield']['import'] = array(
     '#type' => 'fieldset',
-    '#tree' => FALSE,
+    '#tree' => TRUE,
     '#title' => t('Import from CSV'),
     '#collapsible' => TRUE,
     '#collapsed' => TRUE,
@@ -384,19 +390,27 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     '#title' => 'File upload',
     '#type' => 'file',
   );
+
   $element['tablefield']['import']['rebuild_' . $field['field_name'] . '_' . $delta] = array(
     '#type' => 'button',
     '#validate' => array(),
     '#limit_validation_errors' => array('title'),
     '#executes_submit_callback' => TRUE,
-    '#validate' => array('tablefield_import_csv'),
     '#submit' => array('tablefield_rebuild_form'),
     '#value' => 'Import File to: ' . $field['field_name'] . '-' . $delta,
+    '#name' => 'tablefield_import_' . $field['field_name'] . '_' . $delta,
     '#attributes' => array(
       'class' => array('tablefield-rebuild'),
       'id' => 'tablefield-import-button-' . $field['field_name'] . '-' . $delta,
     ),
+    '#ajax' => array(
+      'callback' => 'tablefield_rebuild_form_ajax',
+      'wrapper' => 'tablefield-' . $field['field_name'] . '-' . $delta . '-wrapper',
+      'effect' => 'fade',
+      'event' => 'click'
+    ),
   );
+
 
   // Allow the user to select input filters
   if (!empty($field['settings']['cell_processing'])) {
@@ -416,7 +430,7 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
 function tablefield_import_csv($form, &$form_state) {
   // @todo do we need to destroy the file after loading the data?
   // Look for the field name by checking on the clicked button
-  if(preg_match('/edit-rebuild-(.*)/', $form_state['clicked_button']['#id'], $id)) {
+  if(preg_match('/import-rebuild-(.*)$/', $form_state['clicked_button']['#id'], $id)) {
     // Extract the field and file name from the id of the clicked button
     $file_name = preg_replace('/\-/', '_', $id[1]);
     //preg_match('/[^0-9]*_([0-9]+)$/', $file_name, $field_delta);
@@ -425,8 +439,7 @@ function tablefield_import_csv($form, &$form_state) {
     $delta = $field_delta[1];
     $field_name = preg_replace('/' . $field_delta[0] . '/', '', $file_name);
 
-    // @todo validate file type
-    $file = file_save_upload('tablefield_csv_' . $file_name, array('file_validate_extensions' => array('csv')));
+    $file = file_save_upload($field_name, array('file_validate_extensions' => array('csv')));
 
     if (is_object($file)) {
       if (($handle = fopen($file->uri, "r")) !== FALSE) {
@@ -493,14 +506,30 @@ function tablefield_rebuild_form_ajax($form, $form_state) {
       $delta = $parent;
     }
     $tmp = $rebuild;
-    if ($parent == 'rebuild') {
+
+    if ($parent == 'rebuild' || $parent == 'import') {
       //$rebuild = $delta == 0 ? $tmp[$parent] : $tmp;
       $rebuild = $tmp[$parent];
       break;
     }
     $rebuild = $tmp[$parent];
   }
-  return $rebuild;
+
+  // We don't want to re-send the formatting options.
+  unset($rebuild['format']);
+
+  // We need to avoid sending headers or the multipart form
+  // will make it fail. So, we need to explicitly define the 
+  // whole response to ajax_deliver().
+  return array(
+    '#type' => 'ajax',
+    '#header' => FALSE,
+    '#commands' => array(
+      ajax_command_insert(NULL, drupal_render($rebuild)),
+      ajax_command_prepend(NULL, theme('status_messages')),
+    ),
+  );
+
 }
 
 // @todo how do we persist form_state.values for non-node entities????
