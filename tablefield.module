@@ -31,12 +31,14 @@ function tablefield_field_info() {
  */
 function tablefield_field_settings_form($field, $instance, $has_data) {
   $form = array();
-  $options = array(0 => t('Plain text'), 1 => t('Filtered text (user selects input format)'));
   $form['cell_processing'] = array(
     '#type' => 'radios',
     '#title' => t('Table cell processing'),
     '#default_value' => isset($field['settings']['cell_processing']) ? $field['settings']['cell_processing'] : 0,
-    '#options' => $options,
+    '#options' => array(
+      t('Plain text'), 
+      t('Filtered text (user selects input format)')
+    ),
   );
   $form['default_message'] = array(
     '#type' => 'markup',
@@ -57,9 +59,10 @@ function tablefield_field_schema($field) {
         'size' => 'big',
       ),
       'format' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => FALSE,
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default value' => '',
       ),
     ),
   );
