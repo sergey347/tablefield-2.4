@@ -7,19 +7,19 @@
  */
 
 /**
- * Implements of hook_install().
+ * Implements hook_install().
  */
 function tablefield_install() {
 }
 
 /**
- * Implements of hook_uninstall().
+ * Implements hook_uninstall().
  */
 function tablefield_uninstall() {
 }
 
 /**
- * Implements of hook_enable().
+ * Implements hook_enable().
  *
  * Notify content module when this module is enabled.
  */
@@ -27,7 +27,7 @@ function tablefield_enable() {
 }
 
 /**
- * Implements of hook_disable().
+ * Implements hook_disable().
  *
  * Notify content module when this module is disabled.
  */
