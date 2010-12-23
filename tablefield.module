@@ -61,7 +61,6 @@ function tablefield_field_schema($field) {
       'format' => array(
         'type' => 'varchar',
         'length' => 255,
-        'not null' => TRUE,
         'default value' => '',
       ),
     ),
