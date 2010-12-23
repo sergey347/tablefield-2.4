@@ -47,10 +47,7 @@ function tablefield_update_dependencies() {
   return $dependencies;
 }
 
-/**
- * Update schema to handle machine names of input filter formats.
- */
-function tablefield_update_7000() {
+function tablefield_repair_schema() {
   $spec = array(
     'type' => 'varchar',
     'length' => 255,
@@ -73,4 +70,18 @@ function tablefield_update_7000() {
     db_change_field($table, $column, $column, $spec);
     db_change_field($revision_table, $column, $column, $spec);
   }
+}
+
+/**
+ * Update schema to handle machine names of input filter formats.
+ */
+function tablefield_update_7000() {
+  tablefield_repair_schema();
+}
+
+/**
+ * Fix colums created by versions prior to beta1.
+ */
+function tablefield_update_7001() {
+  tablefield_repair_schema();
 }
