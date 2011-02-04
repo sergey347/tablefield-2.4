@@ -31,12 +31,17 @@ function tablefield_field_info() {
  */
 function tablefield_field_settings_form($field, $instance, $has_data) {
   $form = array();
+  $form['lock_values'] = array(
+    '#type' => 'checkbox',
+    '#title' => 'Lock table field defaults from further edits during node add/edit.',
+    '#default_value' => isset($field['settings']['lock_values']) ? $field['settings']['lock_values'] : FALSE,
+  );
   $form['cell_processing'] = array(
     '#type' => 'radios',
     '#title' => t('Table cell processing'),
     '#default_value' => isset($field['settings']['cell_processing']) ? $field['settings']['cell_processing'] : 0,
     '#options' => array(
-      t('Plain text'), 
+      t('Plain text'),
       t('Filtered text (user selects input format)')
     ),
   );
@@ -103,7 +108,7 @@ function tablefield_field_validate($entity_type, $entity, $field, $instance, $la
 
 /**
  * Implements hook_field_widget_error().
- */ 
+ */
 function tablefield_field_widget_error($element, $error, $form, &$form_state) {
   form_error($element['tablefield'], $error[0]['message']);
 }
@@ -152,10 +157,10 @@ function tablefield_field_is_empty($item, $field) {
 function tablefield_field_formatter_info() {
   return array(
     'default' => array(
-      'label' => t('Tabular View'), 
+      'label' => t('Tabular View'),
       'field types' => array('tablefield'),
     ),
-  ); 
+  );
 }
 
 /**
@@ -286,10 +291,10 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     foreach ($default_value as $row) {
       $temp_count = count($row);
       if ($temp_count > $count_cols) {
-        $count_cols = $temp_count; 
+        $count_cols = $temp_count;
       }
-    } 
-  } 
+    }
+  }
   else {
     $count_rows = count($default_value);
     $count_cols = isset($default_count_cols) ? $default_count_cols : 0;
@@ -311,23 +316,41 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
   for ($i = 0; $i < $count_rows; $i++) {
     $zebra = $i % 2 == 0 ? 'even' : 'odd';
     $element['tablefield']['b_break' . $i] = array(
-      '#markup' => '<tr class="tablefield-row-' . $i . ' tablefield-' . $zebra . '">',
+      '#markup' => '<tr class="tablefield-row-' . $i . ' ' . $zebra . '">',
     );
     for ($ii = 0; $ii < $count_cols; $ii++) {
-      $cell_default = isset($default_value[$i][$ii]) ? $default_value[$i][$ii] : '';
-      $element['tablefield']['cell_' . $i . '_' . $ii] = array(
-        '#type' => 'textfield',
-        '#maxlength' => 2048,
-        '#size' => 0,
-        '#attributes' => array(
-          'id' => 'tablefield_' . $delta . '_cell_' . $i . '_' . $ii, 
-          'class' => array('tablefield-row-' . $i, 'tablefield-col-' . $ii),
-          'style' => 'width:100%'
-        ),
-        '#default_value' => (empty($field_value)) ? $cell_default : $field_value,
-        '#prefix' => '<td style="width:' . floor(100/$count_cols) . '%">',
-        '#suffix' => '</td>',
-      );
+      $instance_default = $instance['default_value'][$delta]['tablefield']["cell_{$i}_{$ii}"];
+      if (!empty($instance_default) && !empty($field['settings']['lock_values']) && $arg0 != 'admin') {
+        // The value still needs to be send on every load in order for the
+        // table to be saved correctly.
+        $element['tablefield']['cell_' . $i . '_' . $ii] = array(
+          '#type' => 'value',
+          '#value' => $instance_default,
+        );
+        // Display the default value, since it's not editable.
+        $element['tablefield']['cell_' . $i . '_' . $ii . '_display'] = array(
+          '#type' => 'item',
+          '#title' => $instance_default,
+          '#prefix' => '<td style="width:' . floor(100/$count_cols) . '%">',
+          '#suffix' => '</td>',
+        );
+      }
+      else {
+        $cell_default = isset($default_value[$i][$ii]) ? $default_value[$i][$ii] : '';
+        $element['tablefield']['cell_' . $i . '_' . $ii] = array(
+          '#type' => 'textfield',
+          '#maxlength' => 2048,
+          '#size' => 0,
+          '#attributes' => array(
+            'id' => 'tablefield_' . $delta . '_cell_' . $i . '_' . $ii,
+            'class' => array('tablefield-row-' . $i, 'tablefield-col-' . $ii),
+            'style' => 'width:100%'
+          ),
+          '#default_value' => (empty($field_value)) ? $cell_default : $field_value,
+          '#prefix' => '<td style="width:' . floor(100/$count_cols) . '%">',
+          '#suffix' => '</td>',
+        );
+      }
     }
     $element['tablefield']['c_break' . $i] = array(
       '#markup' => '</tr>',
@@ -459,7 +482,7 @@ function tablefield_import_csv($form, &$form_state) {
         }
 
         fclose($handle);
- 
+
         $form_state['input'][$field_name][$language][$delta]['tablefield']['rebuild']['count_cols'] =
         $form_state['values'][$field_name][$language][$delta]['tablefield']['rebuild']['count_cols'] = $max_col_count;
         $form_state['input'][$field_name][$language][$delta]['tablefield']['rebuild']['count_rows'] =
@@ -489,30 +512,36 @@ function tablefield_delete_table_values(&$tablefield) {
 
 /**
  * AJAX callback to rebuild the number of rows/columns.
- * The basic idea is to descend down the list of #parent elements of the 
- * clicked_button in order to locate the tablefield inside of the $form 
+ * The basic idea is to descend down the list of #parent elements of the
+ * clicked_button in order to locate the tablefield inside of the $form
  * array. That is the element that we need to return.
  * @param array $form
  * @param array $form_state
  */
 function tablefield_rebuild_form_ajax($form, $form_state) {
   $rebuild = $form;
+  $parents = $form_state['clicked_button']['#parents'];
 
-  foreach ($form_state['clicked_button']['#parents'] as $parent) {
-    // Locate the delta of the field - 0 deltas need to break after
-    // descending to the 'rebuild' element, but deltas greater than
-    // 0 need to break /before/ adding the 'rebuild' element.
-    if (is_int($parent)) {
-      $delta = $parent;
+  if ($form['#id'] == 'field-ui-field-edit-form') {
+    $rebuild = $form['instance']['default_value_widget'][$parents[0]];
+  }
+  else {
+    foreach ($parents as $parent) {
+      // Locate the delta of the field - 0 deltas need to break after
+      // descending to the 'rebuild' element, but deltas greater than
+      // 0 need to break /before/ adding the 'rebuild' element.
+      if (is_int($parent)) {
+        $delta = $parent;
+      }
+      $tmp = $rebuild;
+  
+      if ($parent == 'rebuild' || $parent == 'import') {
+        $rebuild = $delta == 0 ? $tmp[$parent] : $tmp;
+        //$rebuild = $tmp[$parent];
+        break;
+      }
+      $rebuild = $tmp[$parent];
     }
-    $tmp = $rebuild;
-
-    if ($parent == 'rebuild' || $parent == 'import') {
-      $rebuild = $delta == 0 ? $tmp[$parent] : $tmp;
-      //$rebuild = $tmp[$parent];
-      break;
-    }
-    $rebuild = $tmp[$parent];
   }
 
   // We don't want to re-send the format/_weight options.
@@ -520,7 +549,7 @@ function tablefield_rebuild_form_ajax($form, $form_state) {
   unset($rebuild['_weight']);
 
   // We need to avoid sending headers or the multipart form
-  // will make it fail. So, we need to explicitly define the 
+  // will make it fail. So, we need to explicitly define the
   // whole response to ajax_deliver().
   return array(
     '#type' => 'ajax',
@@ -555,7 +584,7 @@ function tablefield_rebuild_form($form, &$form_state) {
 
 /**
  * Helper function to turn form elements into a structured array.
- * 
+ *
  * @param array $tablefield
  *  The table as it appears in FAPI.
  */
@@ -596,25 +625,23 @@ function tablefield_theme() {
 }
 
 /**
- * Theme function for table view 
+ * Theme function for table view
  */
 function theme_tablefield_view($variables) {
   $attributes = array(
-    'id' => 'tablefield-' . $variables['delta'], 
+    'id' => 'tablefield-' . $variables['delta'],
     'class' => array(
       'tablefield'
     ),
   );
 
-  return '<div id="tablefield-wrapper-' . $variables['delta'] . '" class="tablefield-wrapper">' 
-    . theme('table', 
+  return '<div id="tablefield-wrapper-' . $variables['delta'] . '" class="tablefield-wrapper">'
+    . theme('table',
       array(
-        'header' => $variables['header'], 
-        'rows' => $variables['rows'], 
+        'header' => $variables['header'],
+        'rows' => $variables['rows'],
         'attributes' => $attributes,
       )
-    ) 
+    )
     . '</div>';
 }
-
-

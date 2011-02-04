@@ -6,12 +6,6 @@
   margin: 1px 1px 1px 1px;
   padding: 1px 1px 1px 1px;
 }
-.field-widget-tablefield .form-tablefield .form-item,
-.form-tablefield .form-item {
-  float: left;
-  margin: 0 0 0 0;
-  padding: 0 0 0 0;
-}
 .field-widget-tablefield .form-tablefield table,
 .form-tablefield table {
   width: 100%;
@@ -23,15 +17,13 @@
 .form-tablefield table tr td {
   margin: 0 0 0 0;
   padding: 0 0 0 0;
-}
-.form-tablefield table tr.tablefield-row-0 {
-  border-bottom: 2px solid #555;
+  text-align: center;
 }
 .form-tablefield input.tablefield-row-0 {
   font-weight: bold;
 }
-.form-tablefield tr.tablefield-even input {
-  background-color: #e4f4f4;
+.form-tablefield input {
+  background-color: transparent !important;
 }
 .form-tablefield table,
 .form-tablefield fieldset {
