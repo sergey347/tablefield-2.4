@@ -263,9 +263,16 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     $default_count_rows = isset($items[0]['tablefield']['rebuild']['count_cols']) ? $items[0]['tablefield']['rebuild']['count_cols'] : 5;
   }
 
+  if (!empty($instance['description'])) {
+    $help_text = $instance['description'];
+  }
+  else {
+    $help_text = t('The first row will appear as the table header. Leave the first row blank if you do not need a header.');
+  }
+
   $element['tablefield'] = array(
     '#title' => $element['#title'],
-    '#description' => t('The first row will appear as the table header. Leave the first row blank if you do not need a header.'),
+    '#description' => $help_text,
     '#attributes' => array('id' => 'form-tablefield-' . $field['field_name'] . '-' . $delta, 'class' => array('form-tablefield')),
     '#type' => 'fieldset',
     '#tree' => TRUE,
