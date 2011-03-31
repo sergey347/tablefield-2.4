@@ -241,7 +241,7 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     tablefield_import_csv($form, $form_state);
     $default_value = tablefield_rationalize_table($form_state['input'][$field['field_name']][$langcode][$delta]['tablefield']);
   }
-  elseif ($form_state['submitted'] && isset($items[$delta])) {
+  elseif ($form_state['submitted'] && isset($items[$delta]) && isset($items[$delta]['tablefield'])) {
     // A form was submitted
     $default_value = tablefield_rationalize_table($items[$delta]['tablefield']);
   }
