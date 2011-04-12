@@ -96,7 +96,7 @@ function tablefield_field_presave($entity_type, $entity, $field, $instance, $lan
 function tablefield_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
   drupal_add_css(drupal_get_path('module', 'tablefield') . '/tablefield.css');
   // Catch empty form submissions for required tablefields
-  if ($instance['required'] && tablefield_field_is_empty($items[0], $field)) {
+  if ($instance['required'] && isset($items[0]) && tablefield_field_is_empty($items[0], $field)) {
     $message = t('@field is a required field.', array('@field' => $instance['label']));
     $errors[$field['field_name']][$langcode][0]['tablefield'][] = array(
       'error' => 'empty_required_tablefield',
