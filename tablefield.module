@@ -256,7 +256,11 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     }
 
     // Get the widget default value
-    $default_value = tablefield_rationalize_table($instance['default_value'][0]['tablefield']);
+    if(!empty($form_state['input'][$field['field_name']][$langcode][$delta]['tablefield'])) {
+      $default_value = tablefield_rationalize_table($form_state['input'][$field['field_name']][$langcode][$delta]['tablefield']);
+    } else {
+      $default_value = tablefield_rationalize_table($instance['default_value'][0]['tablefield']);
+    }
 
     $default_count_cols = isset($items[0]['tablefield']['rebuild']['count_cols']) ? $items[0]['tablefield']['rebuild']['count_cols'] : 5;
     $default_count_rows = isset($items[0]['tablefield']['rebuild']['count_cols']) ? $items[0]['tablefield']['rebuild']['count_cols'] : 5;
@@ -325,7 +329,7 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
       '#markup' => '<tr class="tablefield-row-' . $i . ' ' . $zebra . '">',
     );
     for ($ii = 0; $ii < $count_cols; $ii++) {
-      $instance_default = isset($instance['default_value'][$delta]) ? $instance['default_value'][$delta]['tablefield']["cell_{$i}_{$ii}"] : array();
+      $instance_default = isset($instance['default_value'][$delta]['tablefield']["cell_{$i}_{$ii}"]) ? $instance['default_value'][$delta]['tablefield']["cell_{$i}_{$ii}"] : array();
       if (!empty($instance_default) && !empty($field['settings']['lock_values']) && $arg0 != 'admin') {
         // The value still needs to be send on every load in order for the
         // table to be saved correctly.
