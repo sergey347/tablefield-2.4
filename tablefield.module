@@ -471,7 +471,7 @@ function tablefield_import_csv($form, &$form_state) {
     // Extract the field delta from the field name
     $delta = $field_delta[1];
     $field_name = preg_replace('/' . $field_delta[0] . '/', '', $file_name);
-    $language = isset($form['language']['#value']) ? $form['language']['#value'] : 'und';
+    $language = isset($form[$field_name]['#language']) ? $form[$field_name]['#language'] : 'und';
     $file = file_save_upload($field_name, array('file_validate_extensions' => array('csv')));
 
     if (is_object($file)) {
@@ -572,9 +572,6 @@ function tablefield_rebuild_form_ajax($form, $form_state) {
 
 }
 
-// @todo how do we persist form_state.values for non-node entities????
-//  - e.g. what is the generic way to do something like node_form_submit_build_node?
-//  - it appears to work as expected in other entity forms, but keep testing nonetheless
 /**
  * Helper function to rebuild the table structure w/o submitting the form.
  * @param array $form
@@ -584,12 +581,6 @@ function tablefield_rebuild_form($form, &$form_state) {
   // Maintain the tablefield data.
   $form_state['tablefield_rebuild'] = $form_state['input'];
   $form_state['rebuild'] = true;
-
-  // Maintain the submitted node values. This is similar
-  // to how the node preview works.
-  if (isset($form['#node_edit_form'])) {
-    $node = node_form_submit_build_node($form, $form_state);
-  }
 }
 
 /**
