@@ -196,7 +196,18 @@ function tablefield_field_formatter_view($entity_type, $entity, $field, $instanc
       }
 
       // Pull the header for theming
-      $header = array_shift($tabledata);
+      $header_data = array_shift($tabledata);
+
+      // Check for an empty header, if so we don't want to theme it.
+      $noheader = TRUE;
+      foreach ($header_data as $cell) {
+        if (strlen($cell['data']) > 0) {
+          $noheader = FALSE;
+          break;
+        }
+      }
+
+      $header = $noheader ? NULL : $header_data;
 
       // Theme the table for display
       $element[$delta]['#markup'] = theme('tablefield_view', array('header' => $header, 'rows' => $tabledata, 'delta' => $delta));
