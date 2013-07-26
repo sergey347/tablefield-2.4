@@ -22,7 +22,45 @@ function tablefield_menu() {
       'title' => 'Export Table Data',
       'access arguments' => array('export tablefield'),
     ),
+    'admin/config/content/tablefield' => array(
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('tablefield_admin_settings_form'),
+      'title' => 'TableField',
+      'description' => 'Global configuration for the TableField module',
+      'access arguments' => array('configure tablefield'),
+    ),
   );
+}
+
+/**
+ * Menu callback to prepare administration configuration form.
+ */
+function tablefield_admin_settings_form() {
+  $form = array();
+
+  $form['tablefield_csv_separator'] = array(
+    '#type' => 'textfield',
+    '#title' => t('CSV separator'),
+    '#size' => 1,
+    '#maxlength' => 1,
+    '#default_value' => variable_get('tablefield_csv_separator', ','),
+    '#description' => t('Select the separator for the CSV import/export.'),
+  );
+
+  return system_settings_form($form);
+}
+
+/**
+ * Validation hook for tablefield_admin_settings_form form.
+ *
+ * @param array $form
+ * @param array $form_state
+ */
+function tablefield_admin_settings_form_validate($form, &$form_state) {
+  if (drupal_strlen($form_state['values']['tablefield_csv_separator']) !== 1) {
+    $message = t('Separator must be one character only!');
+    form_set_error('tablefield_csv_separator', $message);
+  }
 }
 
 /**
@@ -32,6 +70,9 @@ function tablefield_permission() {
   return array(
     'export tablefield' => array(
       'title' => t('Export Tablefield Data as CSV'),
+    ),
+    'configure tablefield' => array(
+      'title' => t('Allow changes in the global tablefield module configuration.'),
     ),
   );
 }
@@ -66,7 +107,7 @@ function tablefield_export_csv($entity_type, $entity_id, $field_name, $langcode,
 
     // Save the data as a CSV file.
     foreach ($table as $row) {
-      fputcsv($fp, $row);
+      fputcsv($fp, $row, variable_get('tablefield_csv_separator', ','));
     }
 
     fclose($fp);
@@ -594,7 +635,7 @@ function tablefield_import_csv($form, &$form_state) {
         // Populate CSV values
         $max_col_count = 0;
         $row_count = 0;
-        while (($csv = fgetcsv($handle, 0, ",")) !== FALSE) {
+        while (($csv = fgetcsv($handle, 0, variable_get('tablefield_csv_separator', ','))) !== FALSE) {
           $col_count = count($csv);
           foreach ($csv as $col_id => $col) {
             $form_state['input'][$field_name][$language][$delta]['tablefield']['cell_' . $row_count . '_' . $col_id] =
