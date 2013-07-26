@@ -535,7 +535,7 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
 
   // If the user doesn't have rebuild perms, we pass along the data as a value.
   // Otherwise, we will provide form elements to specify the size and ajax rebuild.
-  if ($field['settings']['restrict_rebuild'] && !user_access('rebuild tablefield')) {
+  if (isset($field['settings']['restrict_rebuild']) && $field['settings']['restrict_rebuild'] && !user_access('rebuild tablefield')) {
     $element['tablefield']['rebuild'] = array (
       '#type' => 'value',
       '#tree' => TRUE,
@@ -661,6 +661,7 @@ function tablefield_import_csv($form, &$form_state) {
     if (is_object($file)) {
       if (($handle = fopen($file->uri, "r")) !== FALSE) {
         tablefield_delete_table_values($form_state['values'][$field_name][$language][$delta]['tablefield']);
+        tablefield_delete_table_values($form_state['input'][$field_name][$language][$delta]['tablefield']);
 
         // Populate CSV values
         $max_col_count = 0;
