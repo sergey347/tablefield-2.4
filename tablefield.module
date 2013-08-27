@@ -218,8 +218,10 @@ function tablefield_field_presave($entity_type, $entity, $field, $instance, $lan
   foreach ($items as $delta => $table) {
     if (empty($table['value'])) {
       $tablefield = array();
-      foreach ($table['tablefield'] as $key => $value) {
-        $tablefield[$key] = $value;
+      if (!empty($table['tablefield'])) {
+        foreach ($table['tablefield'] as $key => $value) {
+          $tablefield[$key] = $value;
+        }
       }
       $items[$delta]['value'] = serialize($tablefield);
     }
