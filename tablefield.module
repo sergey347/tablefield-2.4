@@ -699,7 +699,7 @@ function tablefield_rebuild_form_ajax($form, $form_state) {
   $rebuild = $form;
   $parents = $form_state['clicked_button']['#parents'];
 
-  if ($form['#id'] == 'field-ui-field-edit-form') {
+  if ($form['form_id']['#id'] == 'edit-field-ui-field-edit-form') {
     $rebuild = $form['instance']['default_value_widget'][$parents[0]];
   }
   else {
