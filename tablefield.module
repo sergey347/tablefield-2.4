@@ -193,25 +193,6 @@ function tablefield_field_settings_form($field, $instance, $has_data) {
 }
 
 /**
- * Implements hook_field_schema().
- */
-function tablefield_field_schema($field) {
-  return array(
-    'columns' => array(
-      'value' => array(
-        'type' => 'text',
-        'size' => 'big',
-      ),
-      'format' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'default value' => '',
-      ),
-    ),
-  );
-}
-
-/**
  * Implements hook_field_presave().
  */
 function tablefield_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {

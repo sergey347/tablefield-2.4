@@ -46,6 +46,25 @@ function tablefield_update_dependencies() {
   return $dependencies;
 }
 
+/**
+ * Implements hook_field_schema().
+ */
+function tablefield_field_schema($field) {
+  return array(
+    'columns' => array(
+      'value' => array(
+        'type' => 'text',
+        'size' => 'big',
+      ),
+      'format' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'default value' => '',
+      ),
+    ),
+  );
+}
+
 function tablefield_repair_schema() {
   $spec = array(
     'type' => 'varchar',
