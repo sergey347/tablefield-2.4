@@ -437,7 +437,7 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
 
   $arg0 = arg(0);
   if ($arg0 == 'admin') {
-    $element['tablefield']['#description'] = t('This form defines the table field defaults, but the number of rows/columns and content can be overridden on a per-node basis. The first row will appear as the table header. Leave the first row bland if you do not need a header.');
+    $element['tablefield']['#description'] = t('This form defines the table field defaults, but the number of rows/columns and content can be overridden on a per-node basis. The first row will appear as the table header. Leave the first row blank if you do not need a header.');
   }
 
   // Determine how many rows/columns are saved in the data
