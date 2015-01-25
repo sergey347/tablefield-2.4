@@ -391,7 +391,7 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     // A form was submitted
     $default_value = tablefield_rationalize_table($items[$delta]['tablefield']);
   }
-  elseif (isset($items[$delta]['value'])) {
+  elseif (isset($items[$delta]['value']) && !isset($form_state['clicked_button']['#value'])) {
     // Default from database (saved node)
     $default_value = tablefield_rationalize_table(unserialize($items[$delta]['value']));
   }
@@ -402,9 +402,15 @@ function tablefield_field_widget_form(&$form, &$form_state, $field, $instance, $
     }
 
     // Get the widget default value
-    if(!empty($form_state['input'][$field['field_name']][$langcode][$delta]['tablefield'])) {
-      $default_value = tablefield_rationalize_table($form_state['input'][$field['field_name']][$langcode][$delta]['tablefield']);
-    } else {
+    if (!empty($form_state['input'][$field['field_name']][$langcode][$delta]['tablefield'])) {
+      $default_value = $form_state['input'][$field['field_name']][$langcode][$delta]['tablefield'];
+      // locked cells values do not end up in the input, so use instance defaults
+      if (!empty($field['settings']['lock_values'])) {
+        $default_value = tablefield_fill_locked_values($default_value, $instance['default_value'][0]['tablefield']);
+      }
+      $default_value = tablefield_rationalize_table($default_value);
+    }
+    else {
       $default_value = tablefield_rationalize_table($instance['default_value'][0]['tablefield']);
     }
 
@@ -827,4 +833,26 @@ function theme_tablefield_view($variables) {
     )
     . $export
     . '</div>';
+}
+
+/**
+ * Helper function to fill in locked values from instance defaults
+ * @param array $tablefield
+ * @params array $instance_default - instance default tablefield
+ * @return array - filled tablefield
+ */
+function tablefield_fill_locked_values($tablefield, $instance_default) {
+  if (!empty($tablefield['rebuild'])) {
+    $count_cols = $tablefield['rebuild']['count_cols'];
+    $count_rows = $tablefield['rebuild']['count_rows'];
+
+    for ($i = 0; $i < $count_rows; $i++) {
+      for ($ii = 0; $ii < $count_cols; $ii++) {
+        if (!isset($tablefield["cell_${i}_${ii}"])) {
+          $tablefield["cell_${i}_${ii}"] = isset($instance_default["cell_${i}_${ii}"]) ? $instance_default["cell_${i}_${ii}"] : '';
+        }
+      }
+    }
+  }
+  return $tablefield;
 }
