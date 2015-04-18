@@ -150,7 +150,7 @@ function tablefield_field_info() {
       'label' => t('Table Field'),
       'description' => t('Stores a table of text fields'),
       'default_widget' => 'tablefield',
-      'default_formatter' => 'default',
+      'default_formatter' => 'tablefield_default',
     ),
   );
 }
@@ -286,7 +286,7 @@ function tablefield_field_is_empty($item, $field) {
  */
 function tablefield_field_formatter_info() {
   return array(
-    'default' => array(
+    'tablefield_default' => array(
       'label' => t('Tabular View'),
       'field types' => array('tablefield'),
     ),
