@@ -151,8 +151,20 @@ function tablefield_field_info() {
       'description' => t('Stores a table of text fields'),
       'default_widget' => 'tablefield',
       'default_formatter' => 'tablefield_default',
+      'property_type' => 'tablefield',
+      'property_callbacks' => array('tablefield_property_info_callback'),
     ),
   );
+}
+
+/**
+ * Defines info for the properties of the tablefield field data structure.
+ */
+function tablefield_property_info_callback(&$info, $entity_type, $field, $instance, $field_type) {
+  $property = &$info[$entity_type]['bundles'][$instance['bundle']]['properties'][$field['field_name']];
+  $property['getter callback'] = 'entity_metadata_field_verbatim_get';
+  $property['setter callback'] = 'entity_metadata_field_verbatim_set';
+  unset($property['query callback']);
 }
 
 /**
