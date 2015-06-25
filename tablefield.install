@@ -109,9 +109,13 @@ function tablefield_update_7001() {
  * Change default field_formatter name from 'default' to 'tablefield_default'.
  */
 function tablefield_update_7002() {
-  $include_additional = array('include_inactive' => TRUE, 'include_deleted' => TRUE);
-  $fields = field_read_fields(array('type' => 'tablefield'), $include_additional);
-  $instances = field_read_instances(array('field_id' => array_keys($fields)), $include_additional);
+  $fields = field_read_fields(array('type' => 'tablefield'));
+  // tablefield enabled but no tablefields
+  if (!is_array($fields) || !count($fields)) {
+    return;
+  }
+
+  $instances = field_read_instances(array('field_id' => array_keys($fields)));
 
   foreach ($instances as $instance) {
     foreach ($instance['display'] as $d => $display) {
