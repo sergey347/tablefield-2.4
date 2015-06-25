@@ -205,6 +205,16 @@ function tablefield_field_settings_form($field, $instance, $has_data) {
 }
 
 /**
+ * Implements hook_field_prepare_view().
+ */
+function tablefield_field_prepare_view($entity_type, $entities, $field, $instances, $langcode, &$items) {
+  foreach ($entities as $id => $entity) {
+    $entity_items = &$items[$id];
+    tablefield_field_presave($entity_type, $entity, $field, $instances, $langcode, $entity_items);
+  }
+}
+
+/**
  * Implements hook_field_presave().
  */
 function tablefield_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
