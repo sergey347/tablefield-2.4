@@ -301,8 +301,49 @@ function tablefield_field_formatter_info() {
     'tablefield_default' => array(
       'label' => t('Tabular View'),
       'field types' => array('tablefield'),
+      'settings' => array(
+        'trim_trailing_rows' => FALSE,
+        'trim_trailing_cols' => FALSE,
+      ),
     ),
   );
+}
+
+/**
+ * Implements hook_field_formatter_settings_summary().
+ */
+function tablefield_field_formatter_settings_summary($field, $instance, $view_mode) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  if ($display['type'] === 'tablefield_default') {
+    $trim_trailing_rows = empty($settings['trim_trailing_rows']) ? t('No') : t('Yes');
+    $trim_trailing_cols = empty($settings['trim_trailing_cols']) ? t('No') : t('Yes');
+    return t('Trim empty trailing rows: %tr', array('%tr' => $trim_trailing_rows)) .'<br>'. t('Trim empty trailing columns: %tr', array('%tr' => $trim_trailing_cols));
+  }
+  return '';
+}
+
+
+/**
+ * Implements hook_field_formatter_settings_form().
+ */
+function tablefield_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  $element = array();
+  if ($display['type'] === 'tablefield_default') {
+    $element['trim_trailing_rows'] = array(
+      '#title' => t('Trim empty trailing rows'),
+      '#type' => 'checkbox',
+      '#default_value' => $settings['trim_trailing_rows'],
+    );
+    $element['trim_trailing_cols'] = array(
+      '#title' => t('Trim empty trailing columns'),
+      '#type' => 'checkbox',
+      '#default_value' => $settings['trim_trailing_cols'],
+    );
+  }
+  return $element;
 }
 
 /**
@@ -326,6 +367,15 @@ function tablefield_field_formatter_view($entity_type, $entity, $field, $instanc
     // Run the table through input filters
     if (isset($tabledata)) {
       if (!empty($tabledata)) {
+
+        if (!empty($settings['trim_trailing_rows'])) {
+          $tabledata = tablefield_rtrim_rows($tabledata);
+        }
+
+        if (!empty($settings['trim_trailing_cols'])) {
+          $tabledata = tablefield_rtrim_cols($tabledata);
+        }
+
         foreach ($tabledata as $row_key => $row) {
           foreach ($row as $col_key => $cell) {
             if (!empty($table['format'])) {
@@ -876,4 +926,60 @@ function tablefield_fill_locked_values($tablefield, $instance_default) {
     }
   }
   return $tablefield;
+}
+
+
+/**
+ * Trim trailing empty rows
+ *
+ * @param $tabledata - the rationalized tablefield
+ */
+function tablefield_rtrim_rows($tabledata) {
+  $row_num = count($tabledata);
+  while ($row_num) {
+    $row_num--;
+    foreach ($tabledata[$row_num] as $value) {
+      if (!empty($value)) {
+        // Stop traversing at the first non empty value.
+        break 2;
+      }
+    }
+    unset($tabledata[$row_num]);
+  }
+  return $tabledata;
+}
+
+/**
+ * Trim trailing empty columns
+ *
+ * @param $tabledata - the rationalized tablefield
+ */
+function tablefield_rtrim_cols($tabledata) {
+
+  function transpose($array) {
+    $transposed = array();
+    foreach ($array as $key => $row) {
+      foreach ($row as $subkey => $value) {
+        $transposed[$subkey][$key] = $value;
+      }
+    }
+    return $transposed;
+  }
+
+  $row_num = count($tabledata);
+
+  if (!$row_num) {
+    return $tabledata;
+  }
+
+  // transpose the array
+  $tabledata = transpose($tabledata);
+
+  // trim trailing empty rows
+  $tabledata = tablefield_rtrim_rows($tabledata);
+
+  // transpose back
+  $tabledata = transpose($tabledata);
+
+  return $tabledata;
 }
