@@ -425,6 +425,7 @@ function tablefield_field_formatter_view($entity_type, $entity, $field, $instanc
         'entity_id' => $entity_id,
         'field_name' => $field['field_name'],
         'langcode' => $langcode,
+        'formatter' => $formatter,
       ));
     }
 
@@ -881,6 +882,7 @@ function tablefield_theme() {
         'entity_id' => NULL,
         'field_name' => NULL,
         'langcode' => NULL,
+        'formatter' => NULL,
       ),
     ),
   );
