@@ -1,0 +1,70 @@
+2c2
+< index b97238d..6b2b4b8 100644
+---
+> index f89b566..25d633e 100644
+5,16c5,7
+< @@ -664,6 +664,14 @@ function tablefield_import_csv($form, &$form_state) {
+<        if (($handle = fopen($file->uri, "r")) !== FALSE) {
+<          tablefield_delete_table_values($form_state['values'][$field_name][$language][$delta]['tablefield']);
+<          tablefield_delete_table_values($form_state['input'][$field_name][$language][$delta]['tablefield']);
+< +        
+< +        // Checking the encoding of the CSV file
+< +        $encoding = 'UTF-8'; // The default encoding.
+< +        if (function_exists('mb_detect_encoding')) {
+< +          $file_contents = file_get_contents($file->uri);
+< +          $encodings_list = implode(',',variable_get('tablefield_detect_encodings', array('UTF-8', 'ISO-8859-1', 'WINDOWS-1251')));
+< +          $encoding = mb_detect_encoding($file_contents, $encodings_list);
+< +        }
+---
+> @@ -754,6 +754,14 @@ function tablefield_import_csv($form, &$form_state, $langcode, $file_form_field_
+>        tablefield_delete_table_values(drupal_array_get_nested_value($form_state['values'], $tablefield_parents));
+>        tablefield_delete_table_values(drupal_array_get_nested_value($form_state['input'], $tablefield_parents));
+18,32c9,15
+<          // Populate CSV values
+<          $max_col_count = 0;
+< @@ -672,7 +680,7 @@ function tablefield_import_csv($form, &$form_state) {
+<            $col_count = count($csv);
+<            foreach ($csv as $col_id => $col) {
+<              $form_state['input'][$field_name][$language][$delta]['tablefield']['cell_' . $row_count . '_' . $col_id] =
+< -            $form_state['values'][$field_name][$language][$delta]['tablefield']['cell_' . $row_count . '_' . $col_id] = $col;
+< +            $form_state['values'][$field_name][$language][$delta]['tablefield']['cell_' . $row_count . '_' . $col_id] = tablefield_convert_encoding($col, $encoding);
+<            }
+<            $max_col_count = $col_count > $max_col_count ? $col_count : $max_col_count;
+<            $row_count++;
+< @@ -847,3 +855,28 @@ function theme_tablefield_view($variables) {
+<      . $export
+<      . '</div>';
+<  }
+---
+> +      // Checking the encoding of the CSV file
+> +      $encoding = 'UTF-8'; // The default encoding.
+> +      if (function_exists('mb_detect_encoding')) {
+> +        $file_contents = file_get_contents($file->uri);
+> +        $encodings_list = implode(',',variable_get('tablefield_detect_encodings', array('UTF-8', 'ISO-8859-1', 'WINDOWS-1251')));
+> +        $encoding = mb_detect_encoding($file_contents, $encodings_list);
+> +      }
+34c17,32
+< +/**
+---
+>        // Populate CSV values
+>        $max_col_count = 0;
+>        $row_count = 0;
+> @@ -761,7 +769,7 @@ function tablefield_import_csv($form, &$form_state, $langcode, $file_form_field_
+>        while (($csv = fgetcsv($handle, 0, variable_get('tablefield_csv_separator', ','))) !== FALSE) {
+>          $col_count = count($csv);
+>          foreach ($csv as $col_id => $col) {
+> -          $imported_tablefield['cell_'. $row_count .'_'. $col_id] = $col;
+> +          $imported_tablefield['cell_'. $row_count .'_'. $col_id] = tablefield_convert_encoding($col, $encoding);
+>          }
+>          $max_col_count = $col_count > $max_col_count ? $col_count : $max_col_count;
+>          $row_count++;
+> @@ -919,6 +927,31 @@ function theme_tablefield_view($variables) {
+>  }
+>  
+>  /**
+57a56,60
+> +
+> +/**
+>   * Helper function to fill in locked values from instance defaults
+>   * @param array $tablefield
+>   * @params array $instance_default - instance default tablefield
